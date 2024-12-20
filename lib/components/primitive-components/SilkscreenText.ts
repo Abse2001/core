@@ -32,7 +32,7 @@ export class SilkscreenText extends PrimitiveComponent<
       font_size: props.fontSize ?? 1,
       layer: maybeFlipLayer(props.layer ?? "top") as "top" | "bottom",
       text: props.text ?? "",
-      rotation: props.pcbRotation,
+      ccw_rotation: props.pcbRotation,
       pcb_component_id: container.pcb_component_id!,
     })
   }
