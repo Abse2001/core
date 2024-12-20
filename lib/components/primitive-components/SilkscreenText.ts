@@ -21,7 +21,7 @@ export class SilkscreenText extends PrimitiveComponent<
 
     const position = this._getGlobalPcbPositionBeforeLayout()
     const { maybeFlipLayer } = this._getPcbPrimitiveFlippedHelpers()
-
+    console.log("pcbRotation", props.pcbRotation)
     // TODO handle layer flipping
     db.pcb_silkscreen_text.insert({
       anchor_alignment: props.anchorAlignment,
@@ -33,6 +33,7 @@ export class SilkscreenText extends PrimitiveComponent<
       font_size: props.fontSize ?? 1,
       layer: maybeFlipLayer(props.layer ?? "top") as "top" | "bottom",
       text: props.text ?? "",
+      rotation: props.pcbRotation,
       pcb_component_id: container.pcb_component_id!,
     })
   }
