@@ -15,7 +15,15 @@ test("group schematic border with padding", () => {
         border={{ dashed: false }}
         schPadding={1}
       >
-        <resistor name="R1" resistance="1k" footprint="0402" />
+        <resistor
+          name="R1"
+          resistance="1k"
+          footprint="0402"
+          schX={-1}
+          schY={0}
+        />
+        <chip name="U1" footprint="soic8" schX={1} schY={0} />
+        <trace from=".R1 > .pin1" to=".U1 > .pin1" />
       </group>
     </board>,
   )
