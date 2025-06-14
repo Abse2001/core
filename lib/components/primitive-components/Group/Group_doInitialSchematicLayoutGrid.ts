@@ -150,4 +150,6 @@ export function Group_doInitialSchematicLayoutGrid(group: Group<any>) {
       center: groupCenter,
     })
   }
+
+  group._renderSchematicBorder()
 }
