@@ -667,6 +667,8 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
     if (schematicLayoutMode === "grid") {
       this._doInitialSchematicLayoutGrid()
     }
+
+    this._renderSchematicBorder()
   }
 
   _doInitialSchematicLayoutMatchAdapt(): void {
@@ -747,6 +749,57 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
       minY: minY - padding,
       maxY: maxY + padding,
     }
+  }
+
+  _renderSchematicBorder() {
+    if (this.root?.schematicDisabled) return
+    const props = this._parsedProps as SubcircuitGroupProps
+    if (!props.border) return
+    const { db } = this.root!
+
+    const schematicChildren = this.children.filter(
+      (c) => c.schematic_component_id,
+    ) as PrimitiveComponent[]
+    if (schematicChildren.length === 0) return
+
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+
+    for (const child of schematicChildren) {
+      const comp = db.schematic_component.get(child.schematic_component_id!)
+      if (!comp) continue
+      const left = comp.center.x - (comp.size?.width ?? 0) / 2
+      const right = comp.center.x + (comp.size?.width ?? 0) / 2
+      const top = comp.center.y - (comp.size?.height ?? 0) / 2
+      const bottom = comp.center.y + (comp.size?.height ?? 0) / 2
+      minX = Math.min(minX, left)
+      maxX = Math.max(maxX, right)
+      minY = Math.min(minY, top)
+      maxY = Math.max(maxY, bottom)
+    }
+
+    if (
+      !isFinite(minX) ||
+      !isFinite(maxX) ||
+      !isFinite(minY) ||
+      !isFinite(maxY)
+    )
+      return
+
+    const padding = props.border.strokeWidth ?? 0.1
+    const width = maxX - minX + padding * 2
+    const height = maxY - minY + padding * 2
+
+    db.schematic_box.insert({
+      width,
+      height,
+      x: minX - padding,
+      y: minY - padding,
+      schematic_component_id: "",
+      is_dashed: props.border.dashed ?? false,
+    })
   }
 
   _getAutorouterConfig(): AutorouterConfig {

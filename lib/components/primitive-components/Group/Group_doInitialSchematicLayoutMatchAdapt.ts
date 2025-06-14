@@ -208,4 +208,6 @@ export function Group_doInitialSchematicLayoutMatchAdapt<
       junctions,
     } as any)
   }
+
+  group._renderSchematicBorder()
 }
