@@ -667,6 +667,8 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
     if (schematicLayoutMode === "grid") {
       this._doInitialSchematicLayoutGrid()
     }
+
+    this._insertSchematicBorder()
   }
 
   _doInitialSchematicLayoutMatchAdapt(): void {
@@ -698,6 +700,45 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
   _doInitialPcbLayoutGrid(): void {
     Group_doInitialPcbLayoutGrid(this)
+  }
+
+  _insertSchematicBorder() {
+    if (this.root?.schematicDisabled) return
+    const { db } = this.root!
+    const props = this._parsedProps as SubcircuitGroupProps
+
+    if (!props.border) return
+
+    let width: number | undefined =
+      typeof props.schWidth === "number" ? props.schWidth : undefined
+    let height: number | undefined =
+      typeof props.schHeight === "number" ? props.schHeight : undefined
+
+    const schematicGroup = this.schematic_group_id
+      ? db.schematic_group.get(this.schematic_group_id)
+      : null
+    if (schematicGroup) {
+      if (width === undefined && typeof schematicGroup.width === "number") {
+        width = schematicGroup.width
+      }
+      if (height === undefined && typeof schematicGroup.height === "number") {
+        height = schematicGroup.height
+      }
+    }
+
+    if (width === undefined || height === undefined) return
+
+    const center =
+      schematicGroup?.center ?? this._getGlobalSchematicPositionBeforeLayout()
+
+    db.schematic_box.insert({
+      width,
+      height,
+      x: center.x - width / 2,
+      y: center.y - height / 2,
+      is_dashed: props.border?.dashed ?? false,
+      schematic_component_id: "",
+    })
   }
 
   _determineSideFromPosition(
