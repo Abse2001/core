@@ -1,9 +1,21 @@
 import type { SchematicPinStyle } from "@tscircuit/props"
-import { schematic_component } from "circuit-json"
 import { z } from "zod"
 import { parsePinNumberFromLabelsOrThrow } from "../utils/schematic/parsePinNumberFromLabelsOrThrow"
 
-type UnderscorePinStyles = z.input<typeof schematic_component>["pin_styles"]
+/**
+ * `schematic_component` from `circuit-json` brings in very heavy types which
+ * cause TypeScript's type checker to run out of memory. We only need the shape
+ * for the `pin_styles` object here, so we define a lightweight replacement.
+ */
+type UnderscorePinStyles = Record<
+  string,
+  {
+    bottom_margin?: number
+    left_margin?: number
+    right_margin?: number
+    top_margin?: number
+  }
+>
 
 export const underscorifyPinStyles = (
   pinStyles: Record<string, SchematicPinStyle> | undefined,

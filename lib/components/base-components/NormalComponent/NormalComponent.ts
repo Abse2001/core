@@ -10,7 +10,6 @@ import type {
 import {
   pcb_manual_edit_conflict_warning,
   point3,
-  rotation,
   schematic_manual_edit_conflict_warning,
 } from "circuit-json"
 import Debug from "debug"
@@ -49,10 +48,15 @@ import { Trace } from "lib/components/primitive-components/Trace/Trace"
 
 const debug = Debug("tscircuit:core")
 
+/**
+ * The `rotation` schema exported by `circuit-json` is extremely complex and
+ * causes TypeScript to exhaust memory when used repeatedly. We only need to
+ * validate that rotations are numbers here, so we use a simplified schema.
+ */
 const rotation3 = z.object({
-  x: rotation,
-  y: rotation,
-  z: rotation,
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
 })
 
 export type PortMap<T extends string> = {
@@ -508,7 +512,6 @@ export class NormalComponent<
     const schPortArrangement = this._getSchematicPortArrangement()
     const schematic_component = db.schematic_component.insert({
       center,
-      rotation: props.schRotation ?? 0,
       size: dimensions.getSize(),
       // We should be using the full size, but circuit-to-svg incorrectly
       // uses the schematic_component size to draw boxes instead of the

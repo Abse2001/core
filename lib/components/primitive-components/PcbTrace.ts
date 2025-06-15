@@ -1,10 +1,27 @@
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 import { z } from "zod"
-import { pcb_trace_route_point, type PcbTraceRoutePoint } from "circuit-json"
+import type { PcbTraceRoutePoint } from "circuit-json"
 import { compose, translate, scale, applyToPoint } from "transformation-matrix"
 
+/**
+ * The full `pcb_trace_route_point` schema from `circuit-json` is quite complex
+ * and causes TypeScript's type checker to run out of memory when used directly
+ * in this project. To avoid that issue we define a lightweight schema that
+ * only validates the fields we actually rely on at runtime and then allow any
+ * additional properties to pass through.
+ */
+const pcbTraceRoutePoint = z
+  .object({
+    route_type: z.string(),
+    x: z.number(),
+    y: z.number(),
+  })
+  .passthrough()
+
 export const pcbTraceProps = z.object({
-  route: z.array(pcb_trace_route_point),
+  route: z.array(pcbTraceRoutePoint) as unknown as z.ZodType<
+    PcbTraceRoutePoint[]
+  >,
   // If this primitive PcbTrace needs to be associated with a source_trace_id
   // it can be added as a prop here. For footprints, it's often not needed.
   source_trace_id: z.string().optional(),
