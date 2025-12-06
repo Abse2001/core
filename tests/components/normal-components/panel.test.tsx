@@ -101,3 +101,31 @@ test("panel noSolderMask disables solder mask coverage", () => {
   const pcbPanel = circuit.db.pcb_panel.list()[0]
   expect(pcbPanel.covered_with_solder_mask).toBe(false)
 })
+
+test("identical boards in panel reuse first board circuitJson", () => {
+  const { circuit } = getTestFixture()
+
+  const SharedBoard = ({ pcbX, pcbY }: { pcbX: string; pcbY: string }) => (
+    <board pcbX={pcbX} pcbY={pcbY}>
+      <chip name="U1" footprint="qfn-48" height="6mm" width="6mm" />
+      <tracehint from="U1.1" to="U1.2" />
+    </board>
+  )
+
+  circuit.add(
+    <panel width="100mm" height="100mm">
+      <SharedBoard pcbX="0mm" pcbY="0mm" />
+      <SharedBoard pcbX="10mm" pcbY="10mm" />
+    </panel>,
+  )
+
+  circuit.render()
+
+  const panel = circuit.children[0] as any
+  const [firstBoard, secondBoard] = panel.children
+
+  expect(firstBoard._parsedProps.circuitJson).toBeDefined()
+  expect(secondBoard._parsedProps.circuitJson).toEqual(
+    firstBoard._parsedProps.circuitJson,
+  )
+})

@@ -1,4 +1,5 @@
 import { panelProps } from "@tscircuit/props"
+import type { AnyCircuitElement } from "circuit-json"
 import { distance } from "circuit-json"
 import type { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 import { Group } from "../primitive-components/Group/Group"
@@ -13,6 +14,7 @@ import { Board } from "./Board"
 export class Panel extends Group<typeof panelProps> {
   pcb_panel_id: string | null = null
   _tabsAndMouseBitesGenerated = false
+  _cachedBoardCircuitJsonBySubcircuitId = new Map<string, AnyCircuitElement[]>()
 
   get config() {
     return {
@@ -227,7 +229,134 @@ export class Panel extends Group<typeof panelProps> {
       throw new Error("<panel> must contain at least one <board>")
     }
 
+    const identicalBoardGroups = this._findIdenticalBoardGroups()
+
+    if (identicalBoardGroups.length > 0) {
+      const [firstBoard, ...restBoards] = identicalBoardGroups[0]
+      const cachedCircuitJson = this._getCachedBoardCircuitJson(firstBoard)
+
+      if (cachedCircuitJson) {
+        this._applyCircuitJsonToBoards(restBoards, cachedCircuitJson)
+      }
+    }
+
     super.runRenderCycle()
+
+    if (identicalBoardGroups.length > 0) {
+      const [firstBoard, ...restBoards] = identicalBoardGroups[0]
+      const circuitJson =
+        this._getCachedBoardCircuitJson(firstBoard) ??
+        this._extractBoardCircuitJson(firstBoard)
+
+      if (circuitJson) {
+        this._applyCircuitJsonToBoards(restBoards, circuitJson)
+        this._cacheBoardCircuitJson(firstBoard, circuitJson)
+      }
+    }
+  }
+
+  _findIdenticalBoardGroups(): Board[][] {
+    const boardChildren = this.children.filter(
+      (child): child is Board => child instanceof Board,
+    )
+
+    if (boardChildren.length < 2) return []
+
+    const groups: Board[][] = []
+    const used = new Set<Board>()
+
+    for (const board of boardChildren) {
+      if (used.has(board)) continue
+
+      const matching = boardChildren.filter((other) => {
+        if (board === other) return false
+        if (other.constructor !== board.constructor) return false
+        return this._propsAreEqualExceptPosition(board.props, other.props)
+      })
+
+      if (matching.length > 0) {
+        groups.push([board, ...matching])
+        matching.forEach((m) => used.add(m))
+        used.add(board)
+      }
+    }
+
+    return groups
+  }
+
+  _propsAreEqualExceptPosition(
+    a: Record<string, any>,
+    b: Record<string, any>,
+  ): boolean {
+    const positionKeys = new Set(["pcbX", "pcbY", "pcbRotation"])
+    const cleanA = Object.fromEntries(
+      Object.entries(a ?? {}).filter(([key]) => !positionKeys.has(key)),
+    )
+    const cleanB = Object.fromEntries(
+      Object.entries(b ?? {}).filter(([key]) => !positionKeys.has(key)),
+    )
+
+    return this._deepEqual(cleanA, cleanB)
+  }
+
+  _deepEqual(a: any, b: any): boolean {
+    if (a === b) return true
+    if (typeof a !== typeof b) return false
+
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false
+      return a.every((val, idx) => this._deepEqual(val, b[idx]))
+    }
+
+    if (a && b && typeof a === "object") {
+      const aKeys = Object.keys(a)
+      const bKeys = Object.keys(b)
+      if (aKeys.length !== bKeys.length) return false
+      return aKeys.every((key) => this._deepEqual(a[key], b[key]))
+    }
+
+    return false
+  }
+
+  _extractBoardCircuitJson(board: Board): AnyCircuitElement[] | null {
+    if (!board.subcircuit_id) return null
+    if (!this.root) return null
+
+    const circuitJson = this.root.db.toArray()
+    const filtered = circuitJson.filter((element) => {
+      const { subcircuit_id, parent_subcircuit_id, pcb_board_id } =
+        element as any
+      return (
+        subcircuit_id === board.subcircuit_id ||
+        parent_subcircuit_id === board.subcircuit_id ||
+        (pcb_board_id && pcb_board_id === board.pcb_board_id)
+      )
+    })
+
+    return filtered.length > 0 ? structuredClone(filtered) : null
+  }
+
+  _applyCircuitJsonToBoards(boards: Board[], circuitJson: AnyCircuitElement[]) {
+    for (const board of boards) {
+      board.props.circuitJson = circuitJson
+      ;(board as any)._parsedProps.circuitJson = circuitJson
+    }
+  }
+
+  _cacheBoardCircuitJson(board: Board, circuitJson: AnyCircuitElement[]) {
+    if (!board.subcircuit_id) return
+    this._cachedBoardCircuitJsonBySubcircuitId.set(
+      board.subcircuit_id,
+      structuredClone(circuitJson),
+    )
+  }
+
+  _getCachedBoardCircuitJson(board: Board): AnyCircuitElement[] | null {
+    if (!board.subcircuit_id) return null
+    const cached = this._cachedBoardCircuitJsonBySubcircuitId.get(
+      board.subcircuit_id,
+    )
+    return cached ? structuredClone(cached) : null
   }
 
   doInitialPcbComponentRender() {
