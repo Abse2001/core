@@ -89,14 +89,16 @@ export const inflateCircuitJson = (
     const maybeFlipLayer =
       target._getPcbPrimitiveFlippedHelpers?.().maybeFlipLayer ??
       ((layer: string) => layer)
-    const targetSubcircuitId =
-      target.subcircuit_id ??
-      (target.source_group_id
-        ? `subcircuit_${target.source_group_id}`
-        : undefined)
 
     for (const pcbTrace of pcbTraces) {
       const { type: _ignoredType, ...traceWithoutType } = pcbTrace
+      const targetSubcircuitId =
+        target.getSubcircuit?.()?.subcircuit_id ??
+        target.subcircuit_id ??
+        traceWithoutType.subcircuit_id ??
+        (target.source_group_id
+          ? `subcircuit_${target.source_group_id}`
+          : undefined)
       inflationCtx.subcircuit.root?.db.pcb_trace.insert({
         ...traceWithoutType,
         route: pcbTrace.route.map((point) => {
