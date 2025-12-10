@@ -1,8 +1,23 @@
 import { expect, test } from "bun:test"
-import boardJson from "tests/components/normal-components/assets/simple-circuit.json"
+import type {
+  AnyCircuitElement,
+  CircuitJson,
+  PcbBoard,
+  PcbTrace,
+} from "circuit-json"
+import boardJsonRaw from "tests/components/normal-components/assets/simple-circuit.json"
 import { getTestFixture } from "tests/fixtures/get-test-fixture"
 
-const inputTrace = (boardJson as any[]).find((el) => el.type === "pcb_trace")
+const boardJson = boardJsonRaw as CircuitJson
+const isPcbTrace = (el: AnyCircuitElement): el is PcbTrace =>
+  el.type === "pcb_trace"
+const isPcbBoard = (el: AnyCircuitElement): el is PcbBoard =>
+  el.type === "pcb_board"
+const inputTrace = boardJson.find(isPcbTrace)
+
+if (!inputTrace) {
+  throw new Error("Expected fixture to include a pcb_trace element")
+}
 
 // When circuitJson is provided we should reuse the provided routing/placement and
 // not invoke packing/autorouting. This should hold both for standalone boards and
@@ -20,18 +35,18 @@ test("circuitJson board reuses provided traces without running algorithms", asyn
     packingStartCount++
   })
 
-  circuit.add(<board circuitJson={boardJson as any} />)
+  circuit.add(<board circuitJson={boardJson} />)
 
   await circuit.renderUntilSettled()
 
   const renderedCircuitJson = circuit.getCircuitJson()
-  const boards = renderedCircuitJson.filter((el) => el.type === "pcb_board")
-  const pcbTraces = renderedCircuitJson.filter((el) => el.type === "pcb_trace")
+  const boards = renderedCircuitJson.filter(isPcbBoard)
+  const pcbTraces = renderedCircuitJson.filter(isPcbTrace)
 
   expect(boards.length).toBe(1)
   expect(pcbTraces.length).toBe(1)
 
-  pcbTraces[0].route.forEach((point: any, idx: number) => {
+  pcbTraces[0].route.forEach((point, idx) => {
     const expectedPoint = inputTrace.route[idx]
     expect(point.x - boards[0].center.x).toBeCloseTo(expectedPoint.x)
     expect(point.y - boards[0].center.y).toBeCloseTo(expectedPoint.y)
@@ -57,23 +72,23 @@ test("circuitJson boards reuse provided traces and offsets inside panel", async 
 
   circuit.add(
     <panel>
-      <board pcbX={-20} circuitJson={boardJson as any} />
-      <board pcbX={20} circuitJson={boardJson as any} />
+      <board pcbX={-20} circuitJson={boardJson} />
+      <board pcbX={20} circuitJson={boardJson} />
     </panel>,
   )
 
   await circuit.renderUntilSettled()
 
   const renderedCircuitJson = circuit.getCircuitJson()
-  const boards = renderedCircuitJson.filter((el) => el.type === "pcb_board")
-  const pcbTraces = renderedCircuitJson.filter((el) => el.type === "pcb_trace")
+  const boards = renderedCircuitJson.filter(isPcbBoard)
+  const pcbTraces = renderedCircuitJson.filter(isPcbTrace)
 
   expect(boards.length).toBe(2)
   expect(pcbTraces.length).toBe(2)
 
   for (const trace of pcbTraces) {
     const routeStart = trace.route[0]
-    const board = boards.reduce(
+    const board = boards.reduce<{ board: PcbBoard; distance: number } | null>(
       (closest, candidate) => {
         const distance = Math.abs(routeStart.x - candidate.center.x)
         if (!closest) return { board: candidate, distance }
@@ -81,10 +96,14 @@ test("circuitJson boards reuse provided traces and offsets inside panel", async 
           ? { board: candidate, distance }
           : closest
       },
-      null as null | { board: any; distance: number },
-    )!.board
+      null,
+    )?.board
 
-    trace.route.forEach((point: any, idx: number) => {
+    if (!board) {
+      throw new Error("Expected each trace to have a matching board")
+    }
+
+    trace.route.forEach((point, idx) => {
       const expectedPoint = inputTrace.route[idx]
       expect(point.x - board.center.x).toBeCloseTo(expectedPoint.x)
       expect(point.y - board.center.y).toBeCloseTo(expectedPoint.y)

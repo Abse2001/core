@@ -46,7 +46,7 @@ export function Trace_doInitialPcbTraceRender(trace: Trace) {
     return
   }
 
-  if ((subcircuit as any)._isInflatedFromCircuitJson) {
+  if (subcircuit._parsedProps.circuitJson) {
     return
   }
 

@@ -26,10 +26,6 @@ export const inflateCircuitJson = (
   if (!circuitJson) return
   const injectionDb = cju(circuitJson)
 
-  // Mark the subcircuit so downstream steps know the layout is supplied by
-  // circuitJson (no autorouting/packing should run)
-  ;(target as any)._isInflatedFromCircuitJson = true
-
   if (circuitJson && children?.length > 0) {
     throw new Error("Component cannot have both circuitJson and children")
   }
@@ -87,16 +83,15 @@ export const inflateCircuitJson = (
 
   const pcbTraces = injectionDb.pcb_trace.list()
   if (pcbTraces.length > 0) {
-    const subcircuit = inflationCtx.subcircuit as any
     const parentTransform =
-      subcircuit._computePcbGlobalTransformBeforeLayout?.() ?? identity()
+      target._computePcbGlobalTransformBeforeLayout?.() ?? identity()
     const maybeFlipLayer =
-      subcircuit._getPcbPrimitiveFlippedHelpers?.().maybeFlipLayer ??
+      target._getPcbPrimitiveFlippedHelpers?.().maybeFlipLayer ??
       ((layer: string) => layer)
     const targetSubcircuitId =
-      subcircuit.subcircuit_id ??
-      (subcircuit.source_group_id
-        ? `subcircuit_${subcircuit.source_group_id}`
+      target.subcircuit_id ??
+      (target.source_group_id
+        ? `subcircuit_${target.source_group_id}`
         : undefined)
 
     for (const pcbTrace of pcbTraces) {
@@ -119,7 +114,7 @@ export const inflateCircuitJson = (
         return { ...rest, x: tx, y: ty }
       })
 
-      const { type, ...traceWithoutType } = pcbTrace as any
+      const { type: _ignoredType, ...traceWithoutType } = pcbTrace
       inflationCtx.subcircuit.root?.db.pcb_trace.insert({
         ...traceWithoutType,
         route: transformedRoute,
