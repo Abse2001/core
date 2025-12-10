@@ -16,6 +16,8 @@ import { inflateSourcePort } from "../../components/primitive-components/Group/S
 import { inflateSourceResistor } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceResistor"
 import { inflateSourceTrace } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceTrace"
 import { inflateSourceTransistor } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceTransistor"
+import { identity } from "transformation-matrix"
+import { applyToPoint } from "transformation-matrix"
 
 export const inflateCircuitJson = (
   target: SubcircuitI & Group<any>,
@@ -78,6 +80,46 @@ export const inflateCircuitJson = (
   const sourcePorts = injectionDb.source_port.list()
   for (const sourcePort of sourcePorts) {
     inflateSourcePort(sourcePort, inflationCtx)
+  }
+
+  const pcbTraces = injectionDb.pcb_trace.list()
+  if (pcbTraces.length > 0) {
+    const parentTransform =
+      target._computePcbGlobalTransformBeforeLayout?.() ?? identity()
+    const maybeFlipLayer =
+      target._getPcbPrimitiveFlippedHelpers?.().maybeFlipLayer ??
+      ((layer: string) => layer)
+    const targetSubcircuitId =
+      target.subcircuit_id ??
+      (target.source_group_id
+        ? `subcircuit_${target.source_group_id}`
+        : undefined)
+
+    for (const pcbTrace of pcbTraces) {
+      const { type: _ignoredType, ...traceWithoutType } = pcbTrace
+      inflationCtx.subcircuit.root?.db.pcb_trace.insert({
+        ...traceWithoutType,
+        route: pcbTrace.route.map((point) => {
+          const { x, y, ...restOfPoint } = point
+          const transformedPoint = applyToPoint(parentTransform, {
+            x: x ?? 0,
+            y: y ?? 0,
+          })
+
+          if (point.route_type === "wire" && point.layer) {
+            return {
+              ...restOfPoint,
+              ...transformedPoint,
+              layer: maybeFlipLayer(point.layer),
+            }
+          }
+
+          return { ...restOfPoint, ...transformedPoint }
+        }),
+        subcircuit_id: targetSubcircuitId ?? traceWithoutType.subcircuit_id,
+      })
+    }
+    return
   }
 
   const sourceTraces = injectionDb.source_trace.list()

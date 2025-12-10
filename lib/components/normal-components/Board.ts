@@ -435,6 +435,8 @@ export class Board
       thickness: this.boardThickness,
       num_layers: this.allLayers.length,
 
+      subcircuit_id: this.subcircuit_id ?? undefined,
+
       width: computedWidth!,
       height: computedHeight!,
       outline: outline?.map((point) => ({

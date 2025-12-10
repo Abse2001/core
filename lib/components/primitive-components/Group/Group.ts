@@ -877,6 +877,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
   _getPcbLayoutMode(): "grid" | "flex" | "match-adapt" | "pack" | "none" {
     const props = this._parsedProps as SubcircuitGroupProps
+    if (props.circuitJson) return "none"
     if (props.pcbRelative) return "none"
     if (props.pcbLayout?.matchAdapt) return "match-adapt"
     if (props.pcbLayout?.flex) return "flex"
