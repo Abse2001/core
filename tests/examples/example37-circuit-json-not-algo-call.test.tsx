@@ -5,8 +5,43 @@ import { getTestFixture } from "tests/fixtures/get-test-fixture"
 const inputTrace = (boardJson as any[]).find((el) => el.type === "pcb_trace")
 
 // When circuitJson is provided we should reuse the provided routing/placement and
-// not invoke packing/autorouting. This also needs to hold when boards are placed
-// inside a panel with offsets.
+// not invoke packing/autorouting. This should hold both for standalone boards and
+// for boards placed inside a panel with offsets.
+test("circuitJson board reuses provided traces without running algorithms", async () => {
+  const { circuit } = getTestFixture()
+
+  let autoroutingStartCount = 0
+  circuit.on("autorouting:start", () => {
+    autoroutingStartCount++
+  })
+
+  let packingStartCount = 0
+  circuit.on("packing:start", () => {
+    packingStartCount++
+  })
+
+  circuit.add(<board circuitJson={boardJson as any} />)
+
+  await circuit.renderUntilSettled()
+
+  const renderedCircuitJson = circuit.getCircuitJson()
+  const boards = renderedCircuitJson.filter((el) => el.type === "pcb_board")
+  const pcbTraces = renderedCircuitJson.filter((el) => el.type === "pcb_trace")
+
+  expect(boards.length).toBe(1)
+  expect(pcbTraces.length).toBe(1)
+
+  pcbTraces[0].route.forEach((point: any, idx: number) => {
+    const expectedPoint = inputTrace.route[idx]
+    expect(point.x - boards[0].center.x).toBeCloseTo(expectedPoint.x)
+    expect(point.y - boards[0].center.y).toBeCloseTo(expectedPoint.y)
+  })
+
+  expect(autoroutingStartCount).toBe(0)
+  expect(packingStartCount).toBe(0)
+  expect(renderedCircuitJson).toMatchPcbSnapshot(import.meta.path)
+})
+
 test("circuitJson boards reuse provided traces and offsets inside panel", async () => {
   const { circuit } = getTestFixture()
 
@@ -21,7 +56,7 @@ test("circuitJson boards reuse provided traces and offsets inside panel", async 
   })
 
   circuit.add(
-    <panel width="100mm" height="100mm">
+    <panel>
       <board pcbX={-20} circuitJson={boardJson as any} />
       <board pcbX={20} circuitJson={boardJson as any} />
     </panel>,
