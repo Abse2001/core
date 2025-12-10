@@ -17,7 +17,7 @@ import { inflateSourceResistor } from "../../components/primitive-components/Gro
 import { inflateSourceTrace } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceTrace"
 import { inflateSourceTransistor } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceTransistor"
 import { identity } from "transformation-matrix"
-import { transformPcbTraceRoute } from "../../components/primitive-components/PcbTrace"
+import { applyToPoint } from "transformation-matrix"
 
 export const inflateCircuitJson = (
   target: SubcircuitI & Group<any>,
@@ -99,11 +99,23 @@ export const inflateCircuitJson = (
       const { type: _ignoredType, ...traceWithoutType } = pcbTrace
       inflationCtx.subcircuit.root?.db.pcb_trace.insert({
         ...traceWithoutType,
-        route: transformPcbTraceRoute(
-          pcbTrace.route,
-          parentTransform,
-          maybeFlipLayer,
-        ),
+        route: pcbTrace.route.map((point) => {
+          const { x, y, ...restOfPoint } = point
+          const transformedPoint = applyToPoint(parentTransform, {
+            x: x ?? 0,
+            y: y ?? 0,
+          })
+
+          if (point.route_type === "wire" && point.layer) {
+            return {
+              ...restOfPoint,
+              ...transformedPoint,
+              layer: maybeFlipLayer(point.layer),
+            }
+          }
+
+          return { ...restOfPoint, ...transformedPoint }
+        }),
         subcircuit_id: targetSubcircuitId ?? traceWithoutType.subcircuit_id,
       })
     }
