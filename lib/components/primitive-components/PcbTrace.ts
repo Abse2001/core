@@ -1,7 +1,13 @@
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 import { z } from "zod"
 import { pcb_trace_route_point, type PcbTraceRoutePoint } from "circuit-json"
-import { compose, translate, scale, applyToPoint } from "transformation-matrix"
+import {
+  compose,
+  translate,
+  scale,
+  applyToPoint,
+  type Matrix,
+} from "transformation-matrix"
 
 export const pcbTraceProps = z.object({
   route: z.array(pcb_trace_route_point),
@@ -11,6 +17,30 @@ export const pcbTraceProps = z.object({
 })
 
 export type PcbTraceProps = z.infer<typeof pcbTraceProps>
+
+export const transformPcbTraceRoute = (
+  route: PcbTraceRoutePoint[],
+  parentTransform: Matrix,
+  maybeFlipLayer: (layer: string) => string,
+): PcbTraceRoutePoint[] => {
+  return route.map((point) => {
+    const { x, y, ...restOfPoint } = point
+    const transformedPoint = applyToPoint(parentTransform, {
+      x: x ?? 0,
+      y: y ?? 0,
+    })
+
+    if (point.route_type === "wire" && point.layer) {
+      return {
+        ...restOfPoint,
+        ...transformedPoint,
+        layer: maybeFlipLayer(point.layer),
+      }
+    }
+
+    return { ...restOfPoint, ...transformedPoint }
+  })
+}
 
 export class PcbTrace extends PrimitiveComponent<typeof pcbTraceProps> {
   pcb_trace_id: string | null = null
@@ -34,18 +64,11 @@ export class PcbTrace extends PrimitiveComponent<typeof pcbTraceProps> {
     const { maybeFlipLayer } = this._getPcbPrimitiveFlippedHelpers()
     const parentTransform = this._computePcbGlobalTransformBeforeLayout()
 
-    const transformedRoute = props.route.map((point) => {
-      const { x, y, ...restOfPoint } = point
-      const transformedPoint = applyToPoint(parentTransform, { x, y })
-      if (point.route_type === "wire" && point.layer) {
-        return {
-          ...transformedPoint,
-          ...restOfPoint,
-          layer: maybeFlipLayer(point.layer),
-        } as PcbTraceRoutePoint
-      }
-      return { ...transformedPoint, ...restOfPoint } as PcbTraceRoutePoint
-    })
+    const transformedRoute = transformPcbTraceRoute(
+      props.route,
+      parentTransform,
+      maybeFlipLayer,
+    )
 
     const pcb_trace = db.pcb_trace.insert({
       pcb_component_id: container.pcb_component_id!,
