@@ -445,6 +445,7 @@ export class Board
     })
 
     this.pcb_board_id = pcb_board.pcb_board_id!
+    this.pcb_component_id = this.pcb_board_id
 
     // Add board information silkscreen text
     this._addBoardInformationToSilkscreen()
@@ -455,6 +456,7 @@ export class Board
     if (!this.pcb_board_id) return
     db.pcb_board.delete(this.pcb_board_id!)
     this.pcb_board_id = null
+    this.pcb_component_id = null
   }
 
   doInitialPcbDesignRuleChecks() {
