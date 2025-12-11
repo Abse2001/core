@@ -1,16 +1,34 @@
 import { copperTextProps } from "@tscircuit/props"
 import type { LayerRef } from "circuit-json"
+import { length } from "circuit-json"
 import { normalizeTextForCircuitJson } from "lib/utils/normalizeTextForCircuitJson"
 import { decomposeTSR } from "transformation-matrix"
+import { z } from "zod"
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 
-export class CopperText extends PrimitiveComponent<typeof copperTextProps> {
+const copperTextPropsWithKnockout = copperTextProps.extend({
+  isKnockout: z.boolean().optional(),
+  isMirrored: z.boolean().optional(),
+  knockoutPadding: z
+    .object({
+      left: length,
+      right: length,
+      top: length,
+      bottom: length,
+    })
+    .partial()
+    .optional(),
+})
+
+export class CopperText extends PrimitiveComponent<
+  typeof copperTextPropsWithKnockout
+> {
   isPcbPrimitive = true
 
   get config() {
     return {
       componentName: "CopperText",
-      zodProps: copperTextProps,
+      zodProps: copperTextPropsWithKnockout,
     }
   }
 
@@ -45,10 +63,6 @@ export class CopperText extends PrimitiveComponent<typeof copperTextProps> {
       rotation = (decomposedTransform.rotation.angle * 180) / Math.PI
     }
 
-    if (isFlipped) {
-      rotation = (rotation + 180) % 360
-    }
-
     const layerOptions = new Set<LayerRef>()
 
     for (const layer of props.layers ?? []) {
@@ -65,9 +79,25 @@ export class CopperText extends PrimitiveComponent<typeof copperTextProps> {
 
     const fontSize = props.fontSize ?? 0.2
     const text = normalizeTextForCircuitJson(props.text)
+    const isKnockout = props.isKnockout ?? false
+    const knockoutPadding = {
+      left: props.knockoutPadding?.left ?? 0.2,
+      right: props.knockoutPadding?.right ?? 0.2,
+      top: props.knockoutPadding?.top ?? 0.2,
+      bottom: props.knockoutPadding?.bottom ?? 0.2,
+    }
+
+    if (isFlipped) {
+      rotation = (rotation + 180) % 360
+    }
 
     for (const layer of layerOptions) {
       const flippedLayer = maybeFlipLayer(layer)
+      const textIsMirrored = props.isMirrored ?? flippedLayer === "bottom"
+      const textRotation =
+        flippedLayer === "bottom" && !isFlipped
+          ? (rotation + 180) % 360
+          : rotation
 
       db.pcb_copper_text.insert({
         anchor_alignment: props.anchorAlignment ?? "center",
@@ -79,18 +109,13 @@ export class CopperText extends PrimitiveComponent<typeof copperTextProps> {
         font_size: fontSize,
         layer: flippedLayer,
         text,
-        ccw_rotation: rotation,
+        ccw_rotation: textRotation,
         pcb_component_id: pcbComponentId,
         subcircuit_id: subcircuit?.subcircuit_id ?? undefined,
         pcb_group_id: group?.pcb_group_id ?? undefined,
-        is_knockout: false,
-        knockout_padding: {
-          left: 0.2,
-          right: 0.2,
-          top: 0.2,
-          bottom: 0.2,
-        },
-        is_mirrored: false,
+        is_knockout: isKnockout,
+        knockout_padding: knockoutPadding,
+        is_mirrored: textIsMirrored,
       })
     }
   }

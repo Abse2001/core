@@ -1,6 +1,17 @@
 import type * as Props from "@tscircuit/props"
 import type { DetailedHTMLProps, SVGProps } from "react"
 
+type CopperTextExtraProps = {
+  isKnockout?: boolean
+  isMirrored?: boolean
+  knockoutPadding?: {
+    left?: Props.CopperTextProps["fontSize"]
+    right?: Props.CopperTextProps["fontSize"]
+    top?: Props.CopperTextProps["fontSize"]
+    bottom?: Props.CopperTextProps["fontSize"]
+  }
+}
+
 export interface TscircuitElements {
   resistor: Props.ResistorProps
   capacitor: Props.CapacitorProps
@@ -60,7 +71,7 @@ export interface TscircuitElements {
   pcbnoteline: Props.PcbNoteLineProps
   pcbnoterect: Props.PcbNoteRectProps
   pcbnotetext: Props.PcbNoteTextProps
-  coppertext: Props.CopperTextProps
+  coppertext: Props.CopperTextProps & CopperTextExtraProps
   pcbnotepath: Props.PcbNotePathProps
   pcbnotedimension: Props.PcbNoteDimensionProps
   fabricationnotetext: Props.FabricationNoteTextProps
