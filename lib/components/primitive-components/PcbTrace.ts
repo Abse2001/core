@@ -1,7 +1,7 @@
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 import { z } from "zod"
-import { pcb_trace_route_point, type PcbTraceRoutePoint } from "circuit-json"
-import { compose, translate, scale, applyToPoint } from "transformation-matrix"
+import { pcb_trace_route_point } from "circuit-json"
+import { applyToPoint } from "transformation-matrix"
 
 export const pcbTraceProps = z.object({
   route: z.array(pcb_trace_route_point),
@@ -36,15 +36,20 @@ export class PcbTrace extends PrimitiveComponent<typeof pcbTraceProps> {
 
     const transformedRoute = props.route.map((point) => {
       const { x, y, ...restOfPoint } = point
-      const transformedPoint = applyToPoint(parentTransform, { x, y })
+      const transformedPoint = applyToPoint(parentTransform, {
+        x: x ?? 0,
+        y: y ?? 0,
+      })
+
       if (point.route_type === "wire" && point.layer) {
         return {
-          ...transformedPoint,
           ...restOfPoint,
+          ...transformedPoint,
           layer: maybeFlipLayer(point.layer),
-        } as PcbTraceRoutePoint
+        }
       }
-      return { ...transformedPoint, ...restOfPoint } as PcbTraceRoutePoint
+
+      return { ...restOfPoint, ...transformedPoint }
     })
 
     const pcb_trace = db.pcb_trace.insert({
