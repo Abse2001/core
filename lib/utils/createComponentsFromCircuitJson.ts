@@ -10,6 +10,7 @@ import { SilkscreenText } from "lib/components/primitive-components/SilkscreenTe
 import { Cutout } from "lib/components/primitive-components/Cutout"
 import { createPinrowSilkscreenText } from "./createPinrowSilkscreenText"
 import type { PinLabelsProp } from "@tscircuit/props"
+import { CopperText } from "lib/components/primitive-components/CopperText"
 
 const calculateCcwRotation = (
   componentRotationStr: string | undefined | null,
@@ -280,6 +281,24 @@ export const createComponentsFromCircuitJson = (
           }),
         )
       }
+    } else if (elm.type === "pcb_copper_text") {
+      const ccwRotation = calculateCcwRotation(
+        componentRotation,
+        elm.ccw_rotation,
+      )
+
+      components.push(
+        new CopperText({
+          anchorAlignment: elm.anchor_alignment ?? "center",
+          text: elm.text,
+          font: elm.font,
+          fontSize: elm.font_size,
+          layer: elm.layer,
+          pcbX: Number.isNaN(elm.anchor_position.x) ? 0 : elm.anchor_position.x,
+          pcbY: elm.anchor_position.y,
+          pcbRotation: ccwRotation ?? 0,
+        }),
+      )
     } else if (elm.type === "pcb_trace") {
       components.push(
         new PcbTrace({
