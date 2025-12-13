@@ -624,6 +624,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
   doInitialPcbTraceRender() {
     const debug = Debug("tscircuit:core:doInitialPcbTraceRender")
+    if (this.getInheritedProperty("circuitJson")) return
     if (!this.isSubcircuit) return
     if (this.root?.pcbDisabled) return
     if (this.getInheritedProperty("routingDisabled")) return
@@ -650,6 +651,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
   updatePcbTraceRender() {
     const debug = Debug("tscircuit:core:updatePcbTraceRender")
     debug(`[${this.getString()}] updating...`)
+    if (this.getInheritedProperty("circuitJson")) return
     if (!this.isSubcircuit) return
     if (
       this._shouldRouteAsync() &&
@@ -878,6 +880,7 @@ export class Group<Props extends z.ZodType<any, any, any> = typeof groupProps>
 
   _getPcbLayoutMode(): "grid" | "flex" | "match-adapt" | "pack" | "none" {
     const props = this._parsedProps as SubcircuitGroupProps
+    if (this.getInheritedProperty("circuitJson")) return "none"
     if (props.pcbRelative) return "none"
     if (props.pcbLayout?.matchAdapt) return "match-adapt"
     if (props.pcbLayout?.flex) return "flex"

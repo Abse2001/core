@@ -16,6 +16,7 @@ import { inflateSourcePort } from "../../components/primitive-components/Group/S
 import { inflateSourceResistor } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceResistor"
 import { inflateSourceTrace } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceTrace"
 import { inflateSourceTransistor } from "../../components/primitive-components/Group/Subcircuit/inflators/inflateSourceTransistor"
+import { inflatePcbTrace } from "lib/components/primitive-components/Group/Subcircuit/inflators/inflatePcbTrace"
 
 export const inflateCircuitJson = (
   target: SubcircuitI & Group<any>,
@@ -83,5 +84,10 @@ export const inflateCircuitJson = (
   const sourceTraces = injectionDb.source_trace.list()
   for (const sourceTrace of sourceTraces) {
     inflateSourceTrace(sourceTrace, inflationCtx)
+  }
+
+  const pcbTraces = injectionDb.pcb_trace.list()
+  for (const pcbTrace of pcbTraces) {
+    inflatePcbTrace(pcbTrace, inflationCtx)
   }
 }
